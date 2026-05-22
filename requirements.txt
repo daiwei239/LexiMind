@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+httpx
+numpy
+pymilvus
+elasticsearch
+sentence-transformers
+langgraph
+langchain-core
+pytest

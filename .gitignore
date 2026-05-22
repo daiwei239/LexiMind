@@ -1,0 +1,92 @@
+# --- Secrets & local config ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.dmypy.json
+dmypy.json
+*.cover
+.hypothesis/
+
+# --- Virtual environments ---
+.venv/
+venv/
+ENV/
+env/
+
+# --- IDE / editor ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.cursor/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Local ML models (download separately; see README) ---
+models/
+*.bin
+*.pt
+*.pth
+*.onnx
+*.safetensors
+
+# --- Data & indexes (large / generated) ---
+data/*
+!data/samples/
+
+# Faiss / retrieval artifacts (research pipeline)
+*.faiss
+data/retrieval/
+data/law_library/
+data/generated_responses.jsonl
+data/generated_samples/
+data/results/
+
+# --- Logs & benchmarks ---
+*.log
+log
+scripts/benchmark_last_run.json
+scripts/benchmark_warm_last_run.json
+tests/.tmp/
+
+# --- Pyserini / BM25 build dirs (src research pipeline) ---
+data/pyserini_index/
+data/retrieval/pyserini_index/
+data/retrieval/qld_index/
+data/retrieval/npy/
+data/retrieval/res/
