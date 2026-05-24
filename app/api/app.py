@@ -65,6 +65,7 @@ def create_app(graph=None, runtime: RagRuntime | None = None) -> FastAPI:
             reranker=reranker,
             answer_agent=answer_agent,
             checkpointer=checkpointer,
+            rrf_k=settings.rrf_k,
         )
         runtime = RagRuntime(
             graph=graph,
@@ -72,6 +73,7 @@ def create_app(graph=None, runtime: RagRuntime | None = None) -> FastAPI:
             sparse_retriever=sparse_retriever,
             reranker=reranker,
             answer_agent=answer_agent,
+            rrf_k=settings.rrf_k,
         )
     elif runtime is None:
         runtime = None
@@ -119,6 +121,7 @@ def create_app(graph=None, runtime: RagRuntime | None = None) -> FastAPI:
                     dense_retriever=runtime.dense_retriever,
                     sparse_retriever=runtime.sparse_retriever,
                     reranker=runtime.reranker,
+                    rrf_k=runtime.rrf_k,
                 )
                 evidence = list(state.get("reranked_hits", []))[: runtime.answer_agent.max_evidence]
                 sources = runtime.answer_agent.build_sources(evidence)

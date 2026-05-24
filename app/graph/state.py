@@ -12,6 +12,7 @@ class RetrievalHit(TypedDict, total=False):
     dense_score: float
     sparse_score: float
     rerank_score: float
+    rrf_score: float
     sources: list[str]
 
 

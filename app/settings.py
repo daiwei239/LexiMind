@@ -71,7 +71,13 @@ class Settings:
     top_k: int = 2
     recall_top_k: int = 3
     rerank_top_k: int = 6
+    rrf_k: int = 60
     evidence_budget: int = 2
+
+    reranker_model: str = "BAAI/bge-reranker-base"
+    reranker_local_files_only: bool = True
+    reranker_max_length: int = 512
+    reranker_batch_size: int = 16
 
     elasticsearch_url: str = "http://127.0.0.1:9200"
     elasticsearch_enabled: bool = True
@@ -81,7 +87,7 @@ class Settings:
     elasticsearch_request_timeout: int = 30
     sparse_retrieval_backend: str = "elasticsearch"
 
-    reranker_backend: str = "bi_encoder"
+    reranker_backend: str = "cross_encoder"
     hyde_enabled: bool = True
     hyde_max_chars: int = 512
 
@@ -135,6 +141,7 @@ class Settings:
             top_k=_env_int(data, "TOP_K", cls.top_k),
             recall_top_k=_env_int(data, "RECALL_TOP_K", cls.recall_top_k),
             rerank_top_k=_env_int(data, "RERANK_TOP_K", cls.rerank_top_k),
+            rrf_k=_env_int(data, "RRF_K", cls.rrf_k),
             evidence_budget=_env_int(data, "EVIDENCE_BUDGET", cls.evidence_budget),
             elasticsearch_url=_env_str(
                 data,
@@ -172,6 +179,14 @@ class Settings:
                 cls.sparse_retrieval_backend,
             ),
             reranker_backend=_env_str(data, "RERANKER_BACKEND", cls.reranker_backend),
+            reranker_model=_env_str(data, "RERANKER_MODEL", cls.reranker_model),
+            reranker_local_files_only=_env_bool(
+                data,
+                "RERANKER_LOCAL_FILES_ONLY",
+                cls.reranker_local_files_only,
+            ),
+            reranker_max_length=_env_int(data, "RERANKER_MAX_LENGTH", cls.reranker_max_length),
+            reranker_batch_size=_env_int(data, "RERANKER_BATCH_SIZE", cls.reranker_batch_size),
             hyde_enabled=_env_bool(data, "HYDE_ENABLED", cls.hyde_enabled),
             hyde_max_chars=_env_int(data, "HYDE_MAX_CHARS", cls.hyde_max_chars),
             chunk_max_chars=_env_int(data, "CHUNK_MAX_CHARS", cls.chunk_max_chars),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.graph.rrf import reciprocal_rank_fusion
 from app.graph.state import LegalRAGState, RetrievalHit
 
 
@@ -19,36 +20,24 @@ class HybridRetrieveNode:
         query = state.get("retrieval_query", "").strip()
         dense_hits = list(self.dense_retriever.search(query))
         sparse_hits = list(self.sparse_retriever.search(query))
-        candidates = self._merge_hits(dense_hits, sparse_hits)
         return {
             "dense_hits": dense_hits,
             "sparse_hits": sparse_hits,
-            "candidates": candidates,
         }
 
-    def _merge_hits(
-        self,
-        dense_hits: list[RetrievalHit],
-        sparse_hits: list[RetrievalHit],
-    ) -> list[RetrievalHit]:
-        merged: dict[str, RetrievalHit] = {}
-        for hit in [*dense_hits, *sparse_hits]:
-            chunk_id = hit["chunk_id"]
-            if chunk_id not in merged:
-                merged[chunk_id] = dict(hit)
-                merged[chunk_id]["sources"] = list(hit.get("sources", []))
-                continue
 
-            existing = merged[chunk_id]
-            for key, value in hit.items():
-                if key == "sources":
-                    continue
-                if key not in existing:
-                    existing[key] = value
-            existing_sources = set(existing.get("sources", []))
-            new_sources = set(hit.get("sources", []))
-            existing["sources"] = list(existing_sources | new_sources)
-        return list(merged.values())
+@dataclass
+class RRFNode:
+    k: int = 60
+
+    def __call__(self, state: LegalRAGState) -> LegalRAGState:
+        dense_hits = list(state.get("dense_hits", []))
+        sparse_hits = list(state.get("sparse_hits", []))
+        candidates = reciprocal_rank_fusion(
+            [dense_hits, sparse_hits],
+            k=self.k,
+        )
+        return {"candidates": candidates}
 
 
 @dataclass

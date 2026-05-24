@@ -103,6 +103,7 @@ def test_chat_stream_endpoint_returns_sse_tokens():
         sparse_retriever=StreamSparseRetriever(),
         reranker=type("R", (), {"rerank": lambda self, q, hits: hits})(),
         answer_agent=StreamAnswerAgent(),
+        rrf_k=60,
     )
     app = create_app(runtime=runtime)
     client = TestClient(app)

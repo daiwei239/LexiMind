@@ -105,6 +105,7 @@ def test_simple_rag_graph_deduplicates_hybrid_hits():
     assert len(result["candidates"]) == 1
     assert result["candidates"][0]["chunk_id"] == "shared-1"
     assert set(result["candidates"][0]["sources"]) == {"dense", "bm25"}
+    assert result["candidates"][0]["rrf_score"] == 2 / 61
 
 
 def test_simple_rag_graph_applies_reranker_scores():

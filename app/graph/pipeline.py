@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.graph.nodes import HybridRetrieveNode, RerankNode, build_query_node
+from app.graph.nodes import HybridRetrieveNode, RRFNode, RerankNode, build_query_node
 from app.graph.state import LegalRAGState
 
 
@@ -10,6 +10,7 @@ def run_retrieval_pipeline(
     dense_retriever: object,
     sparse_retriever: object,
     reranker: object,
+    rrf_k: int = 60,
 ) -> LegalRAGState:
     merged: LegalRAGState = dict(state)
     merged.update(build_query_node(merged))
@@ -19,6 +20,7 @@ def run_retrieval_pipeline(
             sparse_retriever=sparse_retriever,
         )(merged)
     )
+    merged.update(RRFNode(k=rrf_k)(merged))
     merged.update(RerankNode(reranker=reranker)(merged))
     return merged
 

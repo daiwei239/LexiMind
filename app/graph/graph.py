@@ -4,7 +4,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from app.generation.answer_agent import DeepSeekAnswerAgent
-from app.graph.nodes import GenerateAnswerNode, HybridRetrieveNode, RerankNode, build_query_node
+from app.graph.nodes import GenerateAnswerNode, HybridRetrieveNode, RRFNode, RerankNode, build_query_node
 from app.graph.state import LegalRAGState
 
 
@@ -19,6 +19,7 @@ def build_simple_rag_graph(
     reranker: object | None = None,
     answer_agent: object | None = None,
     checkpointer: object | None = None,
+    rrf_k: int = 60,
 ):
     graph = StateGraph(LegalRAGState)
     graph.add_node("build_query", build_query_node)
@@ -29,6 +30,7 @@ def build_simple_rag_graph(
             sparse_retriever=sparse_retriever,
         ),
     )
+    graph.add_node("rrf_fusion", RRFNode(k=rrf_k))
     graph.add_node("rerank", RerankNode(reranker=reranker or _PassthroughReranker()))
     graph.add_node(
         "generate_answer",
@@ -36,7 +38,8 @@ def build_simple_rag_graph(
     )
     graph.add_edge(START, "build_query")
     graph.add_edge("build_query", "hybrid_retrieve")
-    graph.add_edge("hybrid_retrieve", "rerank")
+    graph.add_edge("hybrid_retrieve", "rrf_fusion")
+    graph.add_edge("rrf_fusion", "rerank")
     graph.add_edge("rerank", "generate_answer")
     graph.add_edge("generate_answer", END)
     if checkpointer is None:

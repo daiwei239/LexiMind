@@ -11,3 +11,4 @@ class RagRuntime:
     sparse_retriever: Any
     reranker: Any
     answer_agent: Any
+    rrf_k: int = 60
