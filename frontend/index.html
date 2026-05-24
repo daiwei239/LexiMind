@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LexiMind · 法律智能问答</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600&family=Source+Sans+3:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">§</span>
+          <div>
+            <h1>LexiMind</h1>
+            <p>基于法条检索的智能法律问答</p>
+          </div>
+        </div>
+        <button id="new-session-btn" type="button" class="ghost-btn">新对话</button>
+      </header>
+
+      <main class="layout">
+        <section class="chat-panel" aria-label="对话区">
+          <div id="welcome" class="welcome">
+            <h2>有什么法律问题？</h2>
+            <p>我会检索相关法条并给出参考性分析，不构成正式法律意见。</p>
+            <ul class="suggestions">
+              <li><button type="button" data-prompt="分期购车的合同解除条件有哪些？">分期购车的合同解除条件有哪些？</button></li>
+              <li><button type="button" data-prompt="用人单位单方解除劳动合同需要满足什么条件？">用人单位单方解除劳动合同需要满足什么条件？</button></li>
+              <li><button type="button" data-prompt="借款合同未约定利息，能否主张利息？">借款合同未约定利息，能否主张利息？</button></li>
+            </ul>
+          </div>
+          <div id="chat-log" class="chat-log" aria-live="polite"></div>
+        </section>
+
+        <aside class="sources-panel" aria-label="引用法条">
+          <div class="sources-head">
+            <h3>引用法条</h3>
+            <span id="sources-count" class="badge">0</span>
+          </div>
+          <div id="sources-list" class="sources-list">
+            <p class="empty-hint">发送问题后，相关法条会显示在这里。</p>
+          </div>
+        </aside>
+      </main>
+
+      <footer class="composer-wrap">
+        <form id="chat-form" class="composer" autocomplete="off">
+          <label class="sr-only" for="question-input">输入法律问题</label>
+          <textarea
+            id="question-input"
+            rows="1"
+            placeholder="描述你的法律问题，例如：对方逾期还款我可以起诉吗？"
+            required
+          ></textarea>
+          <button id="send-btn" type="submit" aria-label="发送">
+            <span class="send-label">发送</span>
+          </button>
+        </form>
+        <p class="disclaimer">
+          本系统回答仅供参考，不构成律师意见或正式法律意见。重大事项请咨询执业律师。
+        </p>
+      </footer>
+    </div>
+
+    <template id="message-template">
+      <article class="message">
+        <div class="message-meta">
+          <span class="role"></span>
+          <time></time>
+        </div>
+        <div class="message-body"></div>
+      </article>
+    </template>
+
+    <template id="source-template">
+      <article class="source-card">
+        <h4 class="source-title"></h4>
+        <p class="source-content"></p>
+      </article>
+    </template>
+
+    <script src="/assets/app.js" defer></script>
+  </body>
+</html>

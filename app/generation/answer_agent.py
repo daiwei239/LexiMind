@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterator
 
 import httpx
 
@@ -45,6 +46,44 @@ class DeepSeekClient:
         payload = response.json()
         return payload["choices"][0]["message"]["content"].strip()
 
+    def generate_stream(self, messages: list[dict[str, str]]) -> Iterator[str]:
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.2,
+            "stream": True,
+        }
+        if not self.thinking_enabled:
+            payload["thinking"] = {"type": "disabled"}
+
+        with self.http_client.stream(
+            "POST",
+            f"{self.base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        ) as response:
+            response.raise_for_status()
+            for line in response.iter_lines():
+                if not line:
+                    continue
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8")
+                if not line.startswith("data:"):
+                    continue
+                chunk = line[len("data:") :].strip()
+                if not chunk or chunk == "[DONE]":
+                    if chunk == "[DONE]":
+                        break
+                    continue
+                data = json.loads(chunk)
+                delta = data["choices"][0].get("delta", {})
+                content = delta.get("content")
+                if content:
+                    yield content
+
 
 @dataclass
 class DeepSeekAnswerAgent:
@@ -61,7 +100,13 @@ class DeepSeekAnswerAgent:
             thinking_enabled=self.settings.deepseek_thinking_enabled,
         )
 
-    def build_messages(self, question: str, evidence: list[dict[str, Any]]) -> list[dict[str, str]]:
+    def build_messages(
+        self,
+        question: str,
+        evidence: list[dict[str, Any]],
+        chat_history: list[dict[str, str]] | None = None,
+        max_history_messages: int = 6,
+    ) -> list[dict[str, str]]:
         selected = list(evidence[: self.max_evidence])
         evidence_lines = []
         for index, item in enumerate(selected, start=1):
@@ -76,23 +121,30 @@ class DeepSeekAnswerAgent:
         else:
             evidence_block = "以下是检索到的法条依据：\n\n" + "\n\n".join(evidence_lines)
 
-        return [
+        messages = [
             {
                 "role": "system",
                 "content": (
                     "你是一个严谨的法律问答助手。请优先依据提供的法条证据回答，"
                     "不要编造未提供的法律依据；如果证据不足，请明确说明依据不足。"
+                    "若用户问题与上文相关，请结合对话上下文理解指代和追问。"
                 ),
             },
             {"role": "system", "content": evidence_block},
-            {"role": "user", "content": question},
         ]
 
-    def generate(self, question: str, evidence: list[dict[str, Any]]) -> dict[str, Any]:
+        for item in list(chat_history or [])[-max_history_messages:]:
+            role = item.get("role")
+            content = item.get("content", "").strip()
+            if role in {"user", "assistant"} and content:
+                messages.append({"role": role, "content": content})
+
+        messages.append({"role": "user", "content": question})
+        return messages
+
+    def build_sources(self, evidence: list[dict[str, Any]]) -> list[dict[str, Any]]:
         selected = list(evidence[: self.max_evidence])
-        prompt_messages = self.build_messages(question, selected)
-        answer = self.client.generate(prompt_messages)
-        sources = [
+        return [
             {
                 "chunk_id": item.get("chunk_id"),
                 "parent_article_id": item.get("parent_article_id"),
@@ -101,8 +153,39 @@ class DeepSeekAnswerAgent:
             }
             for item in selected
         ]
+
+    @staticmethod
+    def append_turn_history(
+        chat_history: list[dict[str, str]] | None,
+        question: str,
+        answer: str,
+    ) -> list[dict[str, str]]:
+        updated = list(chat_history or [])
+        updated.append({"role": "user", "content": question})
+        updated.append({"role": "assistant", "content": answer})
+        return updated
+
+    def generate(
+        self,
+        question: str,
+        evidence: list[dict[str, Any]],
+        chat_history: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        selected = list(evidence[: self.max_evidence])
+        prompt_messages = self.build_messages(question, selected, chat_history)
+        answer = self.client.generate(prompt_messages)
         return {
             "answer": answer,
-            "sources": sources,
+            "sources": self.build_sources(selected),
             "prompt_messages": prompt_messages,
         }
+
+    def generate_stream(
+        self,
+        question: str,
+        evidence: list[dict[str, Any]],
+        chat_history: list[dict[str, str]] | None = None,
+    ) -> Iterator[str]:
+        selected = list(evidence[: self.max_evidence])
+        prompt_messages = self.build_messages(question, selected, chat_history)
+        yield from self.client.generate_stream(prompt_messages)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from app.generation.answer_agent import DeepSeekAnswerAgent
@@ -17,6 +18,7 @@ def build_simple_rag_graph(
     sparse_retriever: object,
     reranker: object | None = None,
     answer_agent: object | None = None,
+    checkpointer: object | None = None,
 ):
     graph = StateGraph(LegalRAGState)
     graph.add_node("build_query", build_query_node)
@@ -37,4 +39,6 @@ def build_simple_rag_graph(
     graph.add_edge("hybrid_retrieve", "rerank")
     graph.add_edge("rerank", "generate_answer")
     graph.add_edge("generate_answer", END)
-    return graph.compile()
+    if checkpointer is None:
+        checkpointer = MemorySaver()
+    return graph.compile(checkpointer=checkpointer)

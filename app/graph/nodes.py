@@ -70,10 +70,17 @@ class GenerateAnswerNode:
     def __call__(self, state: LegalRAGState) -> LegalRAGState:
         question = state.get("user_question", "").strip()
         reranked_hits = list(state.get("reranked_hits", []))
+        chat_history = list(state.get("chat_history", []))
         evidence = reranked_hits[: self.max_evidence]
-        result = self.answer_agent.generate(question, evidence)
+        result = self.answer_agent.generate(question, evidence, chat_history=chat_history)
+        answer = result.get("answer", "")
         return {
-            "answer": result.get("answer", ""),
+            "answer": answer,
             "sources": result.get("sources", []),
             "prompt_messages": result.get("prompt_messages", []),
+            "chat_history": self.answer_agent.append_turn_history(
+                chat_history,
+                question,
+                answer,
+            ),
         }

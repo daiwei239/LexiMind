@@ -1,4 +1,5 @@
 from app.graph.graph import build_simple_rag_graph
+from app.graph.pipeline import graph_thread_config
 
 
 class StubDenseRetriever:
@@ -45,7 +46,8 @@ def test_simple_rag_graph_builds_query_and_merges_hits():
         {
             "session_id": "session-1",
             "user_question": "合同解除条件是什么？",
-        }
+        },
+        config=graph_thread_config("session-1"),
     )
 
     assert result["retrieval_query"] == "合同解除条件是什么？"
@@ -96,7 +98,8 @@ def test_simple_rag_graph_deduplicates_hybrid_hits():
         {
             "session_id": "session-2",
             "user_question": "不可抗力能解除合同吗？",
-        }
+        },
+        config=graph_thread_config("session-2"),
     )
 
     assert len(result["candidates"]) == 1
@@ -152,7 +155,8 @@ def test_simple_rag_graph_applies_reranker_scores():
         {
             "session_id": "session-3",
             "user_question": "不可抗力能解除合同吗？",
-        }
+        },
+        config=graph_thread_config("session-3"),
     )
 
     assert [hit["chunk_id"] for hit in result["reranked_hits"]] == ["sparse-high", "dense-low"]
@@ -207,12 +211,18 @@ def test_simple_rag_graph_generates_answer_from_top_two_reranked_hits():
             return sorted(output, key=lambda item: item["rerank_score"], reverse=True)
 
     class StubAnswerAgent:
-        def generate(self, question: str, evidence: list[dict]):
+        def generate(self, question: str, evidence: list[dict], chat_history=None):
             return {
                 "answer": f"{question} -> {','.join(item['chunk_id'] for item in evidence)}",
                 "sources": [{"chunk_id": item["chunk_id"], "title": item["title"]} for item in evidence],
                 "prompt_messages": [{"role": "system", "content": "stub"}],
             }
+
+        def append_turn_history(self, chat_history, question, answer):
+            updated = list(chat_history or [])
+            updated.append({"role": "user", "content": question})
+            updated.append({"role": "assistant", "content": answer})
+            return updated
 
     graph = build_simple_rag_graph(
         dense_retriever=DenseRetriever(),
@@ -225,8 +235,48 @@ def test_simple_rag_graph_generates_answer_from_top_two_reranked_hits():
         {
             "session_id": "session-4",
             "user_question": "请总结相关法条",
-        }
+        },
+        config=graph_thread_config("session-4"),
     )
 
     assert result["answer"] == "请总结相关法条 -> b,c"
     assert [item["chunk_id"] for item in result["sources"]] == ["b", "c"]
+
+
+def test_simple_rag_graph_persists_chat_history_across_turns():
+    class StubAnswerAgent:
+        def generate(self, question: str, evidence: list[dict], chat_history=None):
+            prior = len(chat_history or [])
+            return {
+                "answer": f"{question}:{prior}",
+                "sources": [],
+                "prompt_messages": [],
+            }
+
+        def append_turn_history(self, chat_history, question, answer):
+            updated = list(chat_history or [])
+            updated.append({"role": "user", "content": question})
+            updated.append({"role": "assistant", "content": answer})
+            return updated
+
+    graph = build_simple_rag_graph(
+        dense_retriever=StubDenseRetriever(),
+        sparse_retriever=StubSparseRetriever(),
+        answer_agent=StubAnswerAgent(),
+    )
+    config = graph_thread_config("session-multi")
+
+    first = graph.invoke(
+        {"session_id": "session-multi", "user_question": "第一轮问题"},
+        config=config,
+    )
+    second = graph.invoke(
+        {"session_id": "session-multi", "user_question": "那第二轮呢？"},
+        config=config,
+    )
+
+    assert first["answer"] == "第一轮问题:0"
+    assert len(first["chat_history"]) == 2
+    assert second["answer"] == "那第二轮呢？:2"
+    assert len(second["chat_history"]) == 4
+    assert second["chat_history"][0]["content"] == "第一轮问题"

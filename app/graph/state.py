@@ -18,6 +18,7 @@ class RetrievalHit(TypedDict, total=False):
 class LegalRAGState(TypedDict, total=False):
     session_id: str
     user_question: str
+    chat_history: list[dict[str, str]]
     retrieval_query: str
     dense_hits: list[RetrievalHit]
     sparse_hits: list[RetrievalHit]
